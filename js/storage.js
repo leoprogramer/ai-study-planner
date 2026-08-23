@@ -192,7 +192,13 @@
     },
     // theme
     getTheme(){ return localStorage.getItem(THEME_KEY) || 'light'; },
-    setTheme(t){ localStorage.setItem(THEME_KEY, t); document.documentElement.setAttribute('data-theme', t); }
+    /** Aplica tema propio y el nativo de Bootstrap 5.3 (dropdowns/forms/modales adaptados). */
+    setTheme(t){
+      localStorage.setItem(THEME_KEY, t);
+      const el = document.documentElement;
+      el.setAttribute('data-theme', t);
+      el.setAttribute('data-bs-theme', t);
+    }
   };
 
   function normalizeCourse(c){

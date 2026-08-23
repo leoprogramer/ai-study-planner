@@ -1,7 +1,31 @@
 /* dashboard.js - render del dashboard y semanas/temas */
 (function(global){
   'use strict';
-  const { escapeHtml } = { escapeHtml: (s)=> String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) };
+  const escapeHtml = (s)=> String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  /**
+   * Recursos de un tema con iconos según tipo:
+   * - YouTube → icono rojo "Video"
+   * - URL     → icono externo + dominio
+   * - texto   → marcador
+   */
+  function renderRecursos(recursos){
+    if(!recursos || !recursos.length) return '';
+    const items = recursos.map(r=>{
+      const s = String(r).trim();
+      const low = s.toLowerCase();
+      if(low.includes('youtube.com') || low.includes('youtu.be')){
+        return `<a href="${escapeHtml(s)}" target="_blank" rel="noopener" class="res-yt" title="Ver video en YouTube"><i class="bi bi-youtube"></i> Video</a>`;
+      }
+      if(/^https?:\/\//i.test(s)){
+        let host;
+        try{ host = new URL(s).hostname.replace(/^www\./,''); }catch(e){ host = s.slice(0,28); }
+        return `<a href="${escapeHtml(s)}" target="_blank" rel="noopener" title="${escapeHtml(s)}"><i class="bi bi-box-arrow-up-right"></i> ${escapeHtml(host)}</a>`;
+      }
+      return `<span class="res-txt"><i class="bi bi-bookmark-star"></i> ${escapeHtml(s)}</span>`;
+    });
+    return `<div class="topic-meta mt-1 res-row"><i class="bi bi-mortarboard"></i> ${items.join('<span class="res-sep">•</span>')}</div>`;
+  }
 
   const Dashboard = {
     render(course){
@@ -21,10 +45,10 @@
           <div class="eyebrow">Dashboard</div>
           <h2 class="section-title m-0" style="font-size:1.6rem">${escapeHtml(course.curso)}</h2>
           <div class="d-flex flex-wrap gap-2 mt-2">
-            <span class="badge bg-dark badge-level">${escapeHtml(course.nivel)}</span>
+            <span class="badge text-bg-dark badge-level">${escapeHtml(course.nivel)}</span>
             <span class="badge-soft"><i class="bi bi-calendar3"></i> ${escapeHtml(course.fecha_inicio)}</span>
             <span class="badge-soft"><i class="bi bi-clock"></i> ${escapeHtml(course.duracion)} • ${course.horas_dia}h/día</span>
-            ${course.archived?'<span class="badge bg-warning text-dark">Archivado</span>':''}
+            ${course.archived?'<span class="badge text-bg-warning">Archivado</span>':''}
           </div>
           <p class="text-muted mt-2 mb-0" style="max-width:720px">${escapeHtml(course.descripcion)}</p>
           <p class="mt-1 mb-0"><strong>Objetivo:</strong> ${escapeHtml(course.objetivo)}</p>
@@ -59,7 +83,7 @@
             <div class="chart-wrap" style="height:200px"><canvas id="chartDone"></canvas></div>
             <div class="d-flex gap-2 mt-2 small text-muted flex-wrap">
               <span><span class="dot dot-green"></span> Completado</span>
-              <span><span class="dot" style="background:#e5e7eb"></span> Pendiente (${pendientes})</span>
+              <span><span class="dot dot-empty"></span> Pendiente (${pendientes})</span>
             </div>
           </div>
         </div>
@@ -81,7 +105,7 @@
         <div class="col-lg-5">
           <div class="card-asp card-pad">
             <strong><i class="bi bi-calendar-week"></i> Calendario mensual</strong>
-            <div class="d-flex gap-2 mt-2 small text-muted"><span class="dot dot-red"></span> No estudió <span class="dot dot-yellow"></span> Parcial <span class="dot dot-green"></span> Cumplido</div>
+            <div class="d-flex gap-2 mt-2 small text-muted flex-wrap"><span><span class="dot dot-red"></span> No estudió</span> <span><span class="dot dot-yellow"></span> Parcial</span> <span><span class="dot dot-green"></span> Cumplido</span></div>
             <div id="calendarWrap" class="mt-3"></div>
           </div>
         </div>
@@ -103,80 +127,110 @@
           </div>
         </div>
         <div class="mt-2"><input id="searchInput" class="form-control" placeholder="Buscar conceptos, temas, notas, prácticas... (ej: Docker, flexbox)"></div>
-      </div>
-      `;
+      </div>`;
     },
 
+    /**
+     * Semanas plegables: cabecera-botón con progreso real (X/Y • %) y chevron.
+     * Semana 1 abierta por defecto. Con filtros activos se ocultan días/semanas sin resultados.
+     */
     renderWeeks(course, filter){
       const q = (filter?.q||'').toLowerCase();
       const fTipo = filter?.tipo||'';
       const fEstado = filter?.estado||'';
       const fPri = filter?.pri||'';
-      let html='';
-      course.semanas.forEach(sem=>{
-        const weekDone = sem.dias.every(d=> d.temas.every(t=> t._done||t.estado==='completado'));
-        html+=`<div class="card-asp week-card ${weekDone?'done':''} mb-3">
-          <div class="p-3 d-flex justify-content-between align-items-start gap-2" style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('d-none')">
-            <div><div class="eyebrow">Semana ${sem.numero}</div><div class="section-title">${escapeHtml(sem.titulo)}</div><div class="text-muted small">${escapeHtml(sem.objetivo)}</div></div>
-            <span class="badge-soft">${sem.dias.length} días</span>
-          </div>
-          <div class="">
-            ${sem.dias.map(dia=>{
-              const diaDone = dia.temas.every(t=> t._done||t.estado==='completado');
-              return `<div class="day-head"><strong>Día ${dia.numero} • ${dia.horas}h</strong><span class="badge ${diaDone?'bg-success':'bg-secondary'}">${dia.temas.length} temas</span></div>
-              ${dia.temas.map(t=>{
-                // filtros
-                if(fTipo && t.tipo!==fTipo) return '';
-                if(fPri && t.prioridad!==fPri) return '';
-                if(fEstado==='pendiente' && (t._done||t.estado==='completado')) return '';
-                if(fEstado==='completado' && !(t._done||t.estado==='completado')) return '';
-                if(fEstado==='dominado' && !t.dominado) return '';
-                if(q){
-                  const hay = [t.titulo,t.tipo,t.notas,t.criterios, ...(t.recursos||[])].join(' ').toLowerCase().includes(q);
-                  if(!hay) return '';
-                }
-                const checked = t._done||t.estado==='completado';
-                const titleHl = q? highlight(t.titulo,q): escapeHtml(t.titulo);
-                const notasHl = q && t.notas? highlight(t.notas,q): escapeHtml(t.notas||'');
-                return `<div class="topic-row">
-                  <div class="d-flex gap-2 align-items-start">
-                    <input class="form-check-input mt-1" type="checkbox" ${checked?'checked':''} onchange="APP.toggleDone('${t._id}', this.checked)">
-                    <div class="flex-grow-1">
-                      <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <strong style="${checked?'text-decoration:line-through;opacity:.6':''}">${titleHl}</strong>
-                        <span class="tag">${escapeHtml(t.tipo)}</span>
-                        <span class="tag pri-${t.prioridad}">${escapeHtml(t.prioridad)}</span>
-                        ${t.dominado?'<span class="badge bg-success">Dominado</span>':''}
-                      </div>
-                      <div class="topic-meta mt-1">
-                        <span><i class="bi bi-bullseye"></i> ${escapeHtml(t.criterios||'')}</span>
-                        ${t.recursos?.length? `<span><i class="bi bi-link-45deg"></i> ${t.recursos.map(r=>`<a href="${escapeHtml(r)}" target="_blank" rel="noopener">${escapeHtml(r)}</a>`).join(', ')}</span>`:''}
-                      </div>
-                      <div class="d-flex flex-wrap gap-2 mt-2">
-                        <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t.practicas?'checked':''} onchange="APP.toggleField('${t._id}','practicas',this.checked)"> Práctica</label>
-                        <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t.ejercicios?'checked':''} onchange="APP.toggleField('${t._id}','ejercicios',this.checked)"> Ejercicio</label>
-                        <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t._resumen?'checked':''} onchange="APP.toggleField('${t._id}','_resumen',this.checked)"> Resumen</label>
-                        <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t.dominado?'checked':''} onchange="APP.toggleField('${t._id}','dominado',this.checked)"> Dominado</label>
-                        <select class="form-select form-select-sm" style="width:auto" onchange="APP.changeEstado('${t._id}', this.value)">
-                          <option value="pendiente" ${t.estado==='pendiente'?'selected':''}>Pendiente</option>
-                          <option value="en_progreso" ${t.estado==='en_progreso'?'selected':''}>En progreso</option>
-                          <option value="completado" ${t.estado==='completado'?'selected':''}>Completado</option>
-                        </select>
-                      </div>
-                      <div class="mt-2">
-                        <label class="small text-muted">Notas</label>
-                        <textarea class="form-control form-control-sm" rows="2" placeholder="Escribe tus notas..." oninput="APP.updateNotas('${t._id}', this.value)">${escapeHtml(t.notas||'')}</textarea>
-                      </div>
-                    </div>
+      const hayFiltro = !!(q || fTipo || fEstado || fPri);
+
+      let html = `<div class="d-flex gap-2 mb-2 no-print">
+        <button class="btn btn-ghost btn-sm" onclick="APP.toggleAllWeeks(true)"><i class="bi bi-arrows-expand"></i> Expandir todo</button>
+        <button class="btn btn-ghost btn-sm" onclick="APP.toggleAllWeeks(false)"><i class="bi bi-arrows-collapse"></i> Colapsar todo</button>
+      </div>`;
+
+      let semanasVisibles = 0;
+      course.semanas.forEach((sem, si)=>{
+        // conteo real (sin filtros) para la cabecera
+        let tot=0, done=0;
+        sem.dias.forEach(d=> d.temas.forEach(t=>{ tot++; if(t._done||t.estado==='completado'||t.dominado) done++; }));
+        const pctW = tot? Math.round(done/tot*100):0;
+
+        const daysHtml = sem.dias.map(dia=>{
+          const diaDone = dia.temas.length && dia.temas.every(t=> t._done||t.estado==='completado'||t.dominado);
+          const rows = dia.temas.map(t=>{
+            if(fTipo && t.tipo!==fTipo) return '';
+            if(fPri && t.prioridad!==fPri) return '';
+            if(fEstado==='pendiente' && (t._done||t.estado==='completado')) return '';
+            if(fEstado==='completado' && !(t._done||t.estado==='completado')) return '';
+            if(fEstado==='dominado' && !t.dominado) return '';
+            if(q){
+              const hay = [t.titulo,t.tipo,t.notas,t.criterios, ...(t.recursos||[])].join(' ').toLowerCase().includes(q);
+              if(!hay) return '';
+            }
+            const checked = t._done||t.estado==='completado';
+            const titleHl = q? highlight(t.titulo,q): escapeHtml(t.titulo);
+            return `<div class="topic-row">
+              <div class="d-flex gap-2 align-items-start">
+                <input class="form-check-input mt-1" type="checkbox" ${checked?'checked':''} onchange="APP.toggleDone('${t._id}', this.checked)">
+                <div class="flex-grow-1">
+                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <strong style="${checked?'text-decoration:line-through;opacity:.6':''}">${titleHl}</strong>
+                    <span class="tag">${escapeHtml(t.tipo)}</span>
+                    <span class="tag pri-${t.prioridad}">${escapeHtml(t.prioridad)}</span>
+                    ${t.dominado?'<span class="badge text-bg-success">Dominado</span>':''}
                   </div>
-                </div>`;
-              }).join('')}
-              `;
-            }).join('')}
+                  <div class="topic-meta mt-1">
+                    <span><i class="bi bi-bullseye"></i> ${escapeHtml(t.criterios||'')}</span>
+                  </div>
+                  ${renderRecursos(t.recursos)}
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t.practicas?'checked':''} onchange="APP.toggleField('${t._id}','practicas',this.checked)"> Práctica</label>
+                    <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t.ejercicios?'checked':''} onchange="APP.toggleField('${t._id}','ejercicios',this.checked)"> Ejercicio</label>
+                    <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t._resumen?'checked':''} onchange="APP.toggleField('${t._id}','_resumen',this.checked)"> Resumen</label>
+                    <label class="d-flex gap-1 align-items-center small"><input type="checkbox" ${t.dominado?'checked':''} onchange="APP.toggleField('${t._id}','dominado',this.checked)"> Dominado</label>
+                    <select class="form-select form-select-sm" style="width:auto" onchange="APP.changeEstado('${t._id}', this.value)">
+                      <option value="pendiente" ${t.estado==='pendiente'?'selected':''}>Pendiente</option>
+                      <option value="en_progreso" ${t.estado==='en_progreso'?'selected':''}>En progreso</option>
+                      <option value="completado" ${t.estado==='completado'?'selected':''}>Completado</option>
+                    </select>
+                  </div>
+                  <div class="mt-2">
+                    <label class="small text-muted">Notas</label>
+                    <textarea class="form-control form-control-sm" rows="2" placeholder="Escribe tus notas..." oninput="APP.updateNotas('${t._id}', this.value)">${escapeHtml(t.notas||'')}</textarea>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          }).join('');
+
+          if(hayFiltro && !rows) return '';
+          return `<div>
+            <div class="day-head"><strong>Día ${dia.numero} • ${dia.horas}h</strong><span class="badge ${diaDone?'text-bg-success':'text-bg-secondary'}">${dia.temas.length} temas</span></div>
+            ${rows}
+          </div>`;
+        });
+
+        if(hayFiltro && daysHtml.every(d=>!d)) return;
+        semanasVisibles++;
+
+        html+=`<div class="card-asp week-card ${tot>0&&done===tot?'done':''} mb-3">
+          <button type="button" class="week-head" aria-expanded="${si===0}" onclick="APP.toggleWeek(this)">
+            <div>
+              <div class="eyebrow">Semana ${sem.numero}</div>
+              <div class="section-title">${escapeHtml(sem.titulo)}</div>
+              <div class="text-muted small">${escapeHtml(sem.objetivo)}</div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+              <span class="badge-soft d-none d-sm-inline">${done}/${tot} temas</span>
+              <span class="tag">${pctW}%</span>
+              <i class="bi bi-chevron-down chev" style="${si===0?'transform:rotate(180deg)':''}"></i>
+            </div>
+          </button>
+          <div class="week-body ${si===0?'open':''}">
+            ${daysHtml.join('')}
           </div>
         </div>`;
       });
-      if(!html) html='<div class="empty">Sin resultados para los filtros/búsqueda.</div>';
+
+      if(!semanasVisibles) html+='<div class="empty">Sin resultados para los filtros/búsqueda.</div>';
       return html;
     },
 
@@ -189,7 +243,6 @@
       const log=stats.studyLog||{};
       const horasDia = course.horas_dia||1;
       let cells=[];
-      // empty leading
       for(let i=0;i<first;i++) cells.push(`<div class="cal-cell muted"></div>`);
       for(let d=1; d<=daysInMonth; d++){
         const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -198,13 +251,12 @@
         if(h>=horasDia) cls='green';
         else if(h>0) cls='yellow';
         else {
-          // si es futuro, no pintar rojo
           const isFuture = new Date(iso+'T00:00:00') > new Date(new Date().toISOString().slice(0,10)+'T00:00:00');
           cls = isFuture? '': 'red';
         }
         cells.push(`<div class="cal-cell ${cls}" title="${iso}: ${h}h"><span>${d}</span></div>`);
       }
-      const weekdays=['D','L','M','M','J','V','S'].map(w=>`<div class="text-center small text-muted fw-bold py-1">${w}</div>`).join('');
+      const weekdays=['D','L','M','M','J','V','S'].map(w=>`<div class="text-center small fw-bold py-1 cal-wd">${w}</div>`).join('');
       return `<div class="d-flex justify-content-between align-items-center mb-2"><strong>${now.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}</strong><span class="badge-soft">${horasDia}h objetivo/día</span></div>
         <div class="calendar-grid">${weekdays}${cells.join('')}</div>`;
     }

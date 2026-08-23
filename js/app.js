@@ -25,9 +25,9 @@
   function init(){
     try{
       if(!S || !P || !U || !PR || !D || !CH){ throw new Error('Módulos no cargados. Verifica rutas js/*.js'); }
-      const theme=S.getTheme();
-      document.documentElement.setAttribute('data-theme', theme);
-      const sw=$('themeSwitch'); if(sw) sw.checked = theme==='dark';
+      // aplica tema claro/oscuro (data-theme + data-bs-theme)
+      S.setTheme(S.getTheme());
+      const sw=$('themeSwitch'); if(sw) sw.checked = S.getTheme()==='dark';
       els.topicInput=$('topicInput');
       els.promptBox=$('promptBox');
       els.jsonArea=$('jsonArea');
@@ -79,7 +79,9 @@
     // theme
     $('themeSwitch')?.addEventListener('change', e=>{
       const t=e.target.checked?'dark':'light';
-      S.setTheme(t); document.documentElement.setAttribute('data-theme', t);
+      S.setTheme(t);
+      // los gráficos usan paleta según tema: re-render si el dashboard está visible
+      if(location.hash==='#dashboard') renderDashboard();
     });
     // sidebar mobile
     $('btnMenu')?.addEventListener('click', ()=>{
@@ -262,10 +264,9 @@
     const sideList=$('sidebarCourses');
     if(sideList){
       sideList.innerHTML = list.slice(0,6).map(c=>`
-        <a href="#" class="d-flex justify-content-between align-items-center p-2 rounded ${c.id===activeId?'bg-dark text-white':''}" style="text-decoration:none;${c.id===activeId?'':'background:var(--surface-2);color:var(--text)'}"
-           onclick="APP.selectCourse('${c.id}');return false;">
+        <a href="#" class="side-course ${c.id===activeId?'active':''}" onclick="APP.selectCourse('${c.id}');return false;">
           <span class="small fw-semibold text-truncate" style="max-width:150px">${U.escapeHtml(c.curso)}</span>
-          <span class="badge ${c.id===activeId?'bg-white text-dark':'bg-dark'}">${PR.percent(c)}%</span>
+          <span class="side-pct">${PR.percent(c)}%</span>
         </a>
       `).join('') || '<div class="small text-muted">Sin cursos</div>';
     }
@@ -335,6 +336,27 @@
       this.exportSpecific(c.id, fmt);
     },
     loadSampleDirect(){ loadSample(); location.hash='#import'; },
+    // ---- Semanas plegables (#2) ----
+    toggleWeek(btn){
+      const body = btn.parentElement.querySelector('.week-body');
+      if(!body) return;
+      const open = body.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open);
+      const chev = btn.querySelector('.chev');
+      if(chev) chev.style.transform = open? 'rotate(180deg)':'';
+    },
+    toggleAllWeeks(open){
+      document.querySelectorAll('#weeksWrap .week-card').forEach(card=>{
+        const body=card.querySelector('.week-body'); if(!body) return;
+        body.classList.toggle('open', open);
+        const btn=card.querySelector('.week-head');
+        if(btn){
+          btn.setAttribute('aria-expanded', open);
+          const ch=btn.querySelector('.chev');
+          if(ch) ch.style.transform = open? 'rotate(180deg)':'';
+        }
+      });
+    },
     // ---- Editar curso (#4) ----
     openEditModal(id){
       const c = id? S.getById(id) : S.getActive();

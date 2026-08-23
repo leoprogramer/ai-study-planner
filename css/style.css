@@ -32,16 +32,20 @@
   --surface:#1c1f2a;
   --surface-2:#242838;
   --border:#2a2f45;
-  --border-strong:#343a56;
+  --border-strong:#3d4468;
   --text:#eef2ff;
-  --muted:#a1a8c2;
-  --subtle:#7b82a6;
+  --muted:#b0b8d6;
+  --subtle:#939cc4;
   --accent:#ffffff;
   --accent-2:#60a5fa;
   --accent-soft:#1e293b;
   --shadow:0 8px 30px rgba(0,0,0,.35);
   --shadow-sm:0 1px 6px rgba(0,0,0,.35);
 }
+/* Contraste en oscuro: checkboxes y controles Bootstrap */
+[data-bs-theme="dark"] .form-check-input{background-color:var(--surface-2);border-color:var(--border-strong)}
+[data-bs-theme="dark"] .form-check-input:checked{background-color:var(--accent-2);border-color:var(--accent-2)}
+[data-bs-theme="dark"] .btn-close{filter:invert(1) grayscale(100%) brightness(1.4)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
@@ -175,6 +179,41 @@ a:hover{text-decoration:underline}
 .stat strong{font-size:1.35rem;letter-spacing:-.03em}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .dot-green{background:var(--success)} .dot-yellow{background:var(--warning)} .dot-red{background:var(--danger)}
+.dot-empty{background:var(--border-strong)}
+
+/* Semanas plegables */
+.week-head{
+  width:100%;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  padding:14px 16px;background:none;border:0;text-align:left;color:inherit;cursor:pointer;
+}
+.week-head:hover{background:var(--surface-2)}
+.week-head .section-title{font-size:1.05rem}
+.week-head .chev{transition:transform .25s ease;color:var(--subtle);font-size:.9rem;margin-top:4px}
+.week-body{display:none}
+.week-body.open{display:block;animation:fadeIn .25s ease}
+
+/* Recursos de temas */
+.res-row{align-items:center}
+.res-row a{font-weight:600}
+.res-yt{color:#ef4444}
+.res-yt:hover{color:#dc2626}
+.res-txt{color:var(--muted)}
+.res-sep{color:var(--subtle);margin:0 6px}
+.cal-wd{color:var(--subtle)}
+
+/* Cursos recientes en sidebar */
+.side-course{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:10px;text-decoration:none;
+  background:var(--surface-2);color:var(--text);border:1px solid transparent;
+}
+.side-course:hover{border-color:var(--border-strong);text-decoration:none;color:var(--text)}
+.side-course.active{background:var(--accent-soft);border-color:var(--accent-2)}
+.side-pct{
+  font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:99px;
+  background:var(--surface);border:1px solid var(--border);color:var(--muted);
+}
+.side-course.active .side-pct{background:var(--accent-2);border-color:var(--accent-2);color:#fff}
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .cal-cell{
   aspect-ratio:1; border:1px solid var(--border); border-radius:10px;
