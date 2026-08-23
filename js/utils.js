@@ -1,0 +1,139 @@
+/* utils.js - helpers, exports, prompt maestro */
+(function(global){
+  'use strict';
+  const Utils = {
+    uid: ()=> Math.random().toString(36).slice(2,9),
+    escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    },
+    copy(text){
+      if(navigator.clipboard && window.isSecureContext){
+        return navigator.clipboard.writeText(text);
+      } else {
+        const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        return Promise.resolve();
+      }
+    },
+    download(filename, content, mime='text/plain'){
+      const blob=new Blob([content],{type:mime});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=filename; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    },
+    toCSV(course){
+      const rows=[['semana','dia','tema','tipo','prioridad','estado','dominado','horas','notas']];
+      course.semanas.forEach(sem=>{
+        sem.dias.forEach(dia=>{
+          dia.temas.forEach(t=>{
+            rows.push([sem.numero, dia.numero, t.titulo, t.tipo, t.prioridad, t.estado, t.dominado?'si':'no', dia.horas, (t.notas||'').replace(/\n/g,' ')]);
+          });
+        });
+      });
+      return rows.map(r=> r.map(v=> `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    },
+    exportPDF(course){
+      // usa window.print con estilo dedicado
+      const w=window.open('', '_blank');
+      if(!w){ alert('El navegador bloqueó la ventana. Permite popups para exportar PDF.'); return; }
+      const html = `
+      <html><head><meta charset="utf-8"><title>${Utils.escapeHtml(course.curso)} - Plan</title>
+      <style>
+        body{font-family:Inter,system-ui;padding:24px;color:#111}
+        h1{font-size:22px;margin:0} h2{font-size:16px;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:6px}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
+        th{background:#f5f5f5} .muted{color:#666;font-size:13px}
+      </style></head><body>
+      <h1>${Utils.escapeHtml(course.curso)}</h1>
+      <p class="muted">${Utils.escapeHtml(course.descripcion)}<br>Nivel: ${Utils.escapeHtml(course.nivel)} | Inicio: ${Utils.escapeHtml(course.fecha_inicio)} | Duración: ${Utils.escapeHtml(course.duracion)} | Horas/día: ${course.horas_dia}</p>
+      <p><strong>Objetivo:</strong> ${Utils.escapeHtml(course.objetivo)}</p>
+      ${course.semanas.map(sem=>`
+        <h2>Semana ${sem.numero}: ${Utils.escapeHtml(sem.titulo)} - ${Utils.escapeHtml(sem.objetivo)}</h2>
+        ${sem.dias.map(dia=>`
+          <h3 style="font-size:14px;margin:14px 0 6px">Día ${dia.numero} (${dia.horas}h)</h3>
+          <table><tr><th>Tema</th><th>Tipo</th><th>Prioridad</th><th>Estado</th><th>Dominado</th></tr>
+          ${dia.temas.map(t=>`<tr><td>${Utils.escapeHtml(t.titulo)}</td><td>${t.tipo}</td><td>${t.prioridad}</td><td>${t.estado}</td><td>${t.dominado?'Sí':'No'}</td></tr>`).join('')}
+          </table>
+        `).join('')}
+      `).join('')}
+      <script>window.onload=()=>{window.print();}<\/script>
+      </body></html>`;
+      w.document.write(html); w.document.close();
+    },
+    // Prompt Maestro que obliga a JSON exclusivo
+    buildPrompt(topic){
+      const t = topic.trim();
+      return `Actúa como un DISEÑADOR CURRICULAR EXPERTO. Genera un PLAN DE ESTUDIO COMPLETO para: "${t}".
+
+REGLAS INQUEBRANTABLES:
+- Responde EXCLUSIVAMENTE con JSON válido, sin texto antes ni después, sin markdown, sin explicaciones, sin \`\`\`json.
+- El JSON debe ser parseable con JSON.parse().
+- Usa UTF-8, comillas dobles, sin comas finales.
+- No omitas ningún campo del esquema.
+
+ESQUEMA EXACTO (respétalo al 100%):
+{
+  "curso": "string - nombre del curso",
+  "descripcion": "string - 1-2 frases que describan el curso",
+  "duracion": "string - ej: '4 semanas'",
+  "horas_dia": 2,
+  "objetivo": "string - objetivo general del curso",
+  "nivel": "Principiante | Intermedio | Avanzado",
+  "fecha_inicio": "YYYY-MM-DD - usa la fecha de hoy si no se especifica",
+  "semanas": [
+    {
+      "numero": 1,
+      "titulo": "string",
+      "objetivo": "string",
+      "dias": [
+        {
+          "numero": 1,
+          "horas": 2,
+          "temas": [
+            {
+              "titulo": "string - nombre del tema",
+              "tipo": "concepto | practica | ejercicio",
+              "prioridad": "alta | media | baja",
+              "estado": "pendiente",
+              "dominado": false,
+              "notas": "",
+              "practicas": false,
+              "ejercicios": false,
+              "criterios": "string - cómo saber que lo dominas",
+              "recursos": ["string url o nombre de recurso"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+CONTENIDO PEDAGÓGICO PARA "${t}":
+- Duración recomendada según complejidad (mínimo 3 semanas, máximo 8).
+- Cada semana 5 días de estudio (lunes-viernes), 2-4 temas por día.
+- Progresión lógica: fundamentos → intermedio → avanzado → proyecto.
+- Tipos balanceados: 40% concepto, 30% practica, 30% ejercicio.
+- Prioridades coherentes: fundamentos = alta.
+- Criterios evaluables y recursos reales (documentación oficial, libros, cursos).
+- Nivel coherente con el tema: si es introductorio usa Principiante.
+
+VALIDACIÓN FINAL ANTES DE RESPONDER:
+- ¿Es solo JSON? SÍ.
+- ¿Todos los campos existen? SÍ.
+- ¿horas_dia es número? SÍ.
+- ¿semanas es arreglo no vacío? SÍ.
+
+Ahora genera ÚNICAMENTE el JSON para "${t}".`;
+    },
+    debounce(fn, ms){
+      let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); };
+    },
+    formatDate(iso){
+      if(!iso) return '-';
+      const d=new Date(iso+'T00:00:00'); return d.toLocaleDateString('es-ES',{year:'numeric',month:'short',day:'numeric'});
+    }
+  };
+  global.ASPUtils = Utils;
+})(window);

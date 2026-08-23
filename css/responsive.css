@@ -1,0 +1,34 @@
+/* responsive.css */
+@media(max-width:992px){
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{
+    position:fixed;inset:var(--navbar-h) auto 0 0;width:86%;max-width:360px;
+    transform:translateX(-100%);transition:transform .28s ease;z-index:1050;
+    box-shadow:var(--shadow);
+  }
+  .sidebar.open{transform:translateX(0)}
+  .backdrop{
+    position:fixed;inset:var(--navbar-h) 0 0 0;background:rgba(0,0,0,.38);
+    backdrop-filter:blur(2px);z-index:1049;display:none;
+  }
+  .backdrop.show{display:block}
+  .content{padding:16px}
+  .hero{padding:20px}
+  .pomo-display{font-size:2.4rem}
+}
+@media(max-width:576px){
+  .brand-title{font-size:1rem}
+  .navbar-asp{height:58px}
+  :root{--navbar-h:58px}
+  .topic-row{padding:10px 12px}
+  .chart-wrap{height:220px}
+}
+@media(min-width:993px){
+  .only-mobile{display:none !important}
+}
+@media print{
+  .navbar-asp,.sidebar,.no-print{display:none !important}
+  .app-shell{display:block}
+  .content{padding:0;max-width:none}
+  .card-asp{box-shadow:none;border:1px solid #ddd}
+}

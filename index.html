@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="AI Study Planner - Planifica y sigue tu aprendizaje con IA, 100% offline">
+<title>AI Study Planner</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22AI%20Study%20Planner%22,%22display%22:%22standalone%22}">
+<!-- Vendor local (100% offline, sin CDN) -->
+<link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+<link href="css/style.css" rel="stylesheet">
+<link href="css/dashboard.css" rel="stylesheet">
+<link href="css/responsive.css" rel="stylesheet">
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar-asp d-flex align-items-center px-3 gap-3">
+  <button class="btn-icon only-mobile" id="btnMenu" aria-label="Menú"><i class="bi bi-list fs-5"></i></button>
+  <div class="d-flex align-items-center gap-2">
+    <div class="brand-mark">AI</div>
+    <div>
+      <div class="brand-title">AI Study Planner</div>
+      <div class="brand-sub d-none d-sm-block">Aprende cualquier tema con IA • Offline • LocalStorage</div>
+    </div>
+  </div>
+  <div class="ms-auto d-flex align-items-center gap-2">
+    <a href="#home" class="btn btn-ghost btn-sm d-none d-md-inline-flex"><i class="bi bi-house"></i> Inicio</a>
+    <a href="#dashboard" class="btn btn-ghost btn-sm d-none d-md-inline-flex"><i class="bi bi-speedometer2"></i> Dashboard</a>
+    <div class="form-check form-switch m-0 d-flex align-items-center gap-2" title="Modo oscuro">
+      <input class="form-check-input" type="checkbox" id="themeSwitch" role="switch">
+      <label class="form-check-label small d-none d-sm-inline" for="themeSwitch"><i class="bi bi-moon-stars"></i></label>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="location.hash='#import'"><i class="bi bi-upload"></i> Importar</button>
+  </div>
+</nav>
+
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <nav class="d-grid gap-1">
+      <a href="#home" data-nav="home" class="btn btn-ghost text-start"><i class="bi bi-stars me-2"></i> Generar Prompt</a>
+      <a href="#import" data-nav="import" class="btn btn-ghost text-start"><i class="bi bi-braces me-2"></i> Importar JSON</a>
+      <a href="#dashboard" data-nav="dashboard" class="btn btn-primary text-start"><i class="bi bi-grid me-2"></i> Dashboard</a>
+      <a href="#cursos" data-nav="cursos" class="btn btn-ghost text-start"><i class="bi bi-collection me-2"></i> Mis Cursos</a>
+    </nav>
+    <div class="divider"></div>
+
+    <!-- Pomodoro -->
+    <div class="card-asp">
+      <div class="card-pad">
+        <div class="d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-alarm"></i> Pomodoro</strong>
+          <span class="badge-soft" id="pomoLabel">Listo</span>
+        </div>
+        <div class="d-flex justify-content-center my-3">
+          <div class="pomo-ring" id="pomoRing">
+            <div class="pomo-display" id="pomoTime">25:00</div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-ghost btn-sm" id="pomo25">25m</button>
+          <button class="btn btn-ghost btn-sm" id="pomo50">50m</button>
+          <div class="d-flex gap-1">
+            <input id="pomoInput" type="number" class="form-control form-control-sm" placeholder="min" style="width:70px">
+            <button class="btn btn-ghost btn-sm" id="pomoCustom">OK</button>
+          </div>
+        </div>
+        <div class="d-grid gap-2 mt-3">
+          <button class="btn btn-primary btn-sm" id="pomoStart"><i class="bi bi-play-fill"></i> Iniciar</button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-ghost btn-sm w-50" id="pomoPause" disabled><i class="bi bi-pause"></i> Pausar</button>
+            <button class="btn btn-ghost btn-sm w-50" id="pomoReset"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+          </div>
+        </div>
+        <div class="small text-muted mt-2">Al terminar se registra automáticamente el tiempo estudiado y la racha.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="eyebrow mb-2">Cursos recientes</div>
+    <div id="sidebarCourses" class="d-grid gap-2"></div>
+
+    <div class="divider"></div>
+    <div class="eyebrow mb-2">Backup</div>
+    <button class="btn btn-ghost btn-sm w-100" id="btnBackup"><i class="bi bi-download"></i> Crear copia de seguridad</button>
+    <label class="btn btn-ghost btn-sm w-100 mt-2" style="cursor:pointer">
+      <i class="bi bi-upload"></i> Restaurar copia <input type="file" id="backupFile" accept=".json" hidden>
+    </label>
+    <div class="small text-muted mt-3">Todo se guarda en <span class="kbd">LocalStorage</span>. 100% offline. Abre <span class="kbd">index.html</span> en Android y funciona.</div>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- Content -->
+  <main class="content">
+    <!-- HOME -->
+    <section id="view-home" data-view>
+      <div class="hero animate-in">
+        <span class="pill"><i class="bi bi-stars text-primary"></i> Nuevo • Generador de Prompt Maestro</span>
+        <h1 class="section-title mt-3" style="font-size:2rem;letter-spacing:-.04em">¿Qué deseas aprender hoy?</h1>
+        <p class="text-muted mb-3">Escribe un tema y genera un prompt listo para ChatGPT. La IA te devolverá <strong>solo JSON</strong> compatible con esta app.</p>
+
+        <label class="form-label fw-semibold">¿Qué deseas aprender?</label>
+        <input id="topicInput" class="form-control topic-input" placeholder="Ej: Arquitectura de Software, Docker, Inglés B2, Cálculo...">
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <button class="chip" data-chip="Arquitectura de Software">Arquitectura de Software</button>
+          <button class="chip" data-chip="Docker">Docker</button>
+          <button class="chip" data-chip="Linux">Linux</button>
+          <button class="chip" data-chip="Inglés">Inglés</button>
+          <button class="chip" data-chip="Matemáticas">Matemáticas</button>
+          <button class="chip" data-chip="Python para Data Science">Python Data Science</button>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-primary" id="btnGeneratePrompt"><i class="bi bi-magic"></i> Generar Prompt</button>
+          <a href="#import" class="btn btn-ghost"><i class="bi bi-braces"></i> Importar JSON</a>
+          <a href="#cursos" class="btn btn-ghost"><i class="bi bi-collection"></i> Mis Cursos</a>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-lg-7">
+          <div class="card-asp h-100">
+            <div class="card-pad">
+              <div class="d-flex justify-content-between align-items-center">
+                <strong><i class="bi bi-file-text"></i> Prompt Maestro</strong>
+                <button class="btn btn-primary btn-sm" id="btnCopyPrompt"><i class="bi bi-copy"></i> Copiar</button>
+              </div>
+              <div class="small text-muted mb-2">Copia y pégalo en ChatGPT / Claude / Gemini. La IA debe responder <strong>solo</strong> JSON.</div>
+              <div id="promptBox" class="prompt-box">Escribe un tema arriba para generar el Prompt Maestro...</div>
+              <div class="alert-asp mt-3">
+                <strong>Flujo:</strong> 1) Copiar prompt → 2) Enviar a ChatGPT → 3) Copiar el JSON que responde → 4) <a href="#import">Importar aquí</a>.
+                <div class="small text-muted mt-1">El prompt obliga a la IA a no añadir texto extra ni markdown.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="card-asp h-100">
+            <div class="card-pad">
+              <strong><i class="bi bi-lightbulb"></i> ¿Cómo funciona?</strong>
+              <ol class="small mt-2 mb-0 ps-3">
+                <li>Escribes el tema (ej: <em>Docker</em>).</li>
+                <li>La app genera un prompt blindado.</li>
+                <li>Lo pegas en tu IA favorita.</li>
+                <li>Copias el JSON que te devuelve.</li>
+                <li>Lo importas y se crea el dashboard automáticamente.</li>
+                <li>Haces seguimiento diario, pomodoro, notas y estadísticas.</li>
+              </ol>
+              <div class="divider"></div>
+              <div class="d-grid gap-2">
+                <a href="#import" class="btn btn-primary"><i class="bi bi-upload"></i> Ir a Importar JSON</a>
+                <button class="btn btn-ghost" onclick="location.hash='#cursos'"><i class="bi bi-collection"></i> Ver Mis Cursos</button>
+              </div>
+              <div class="small text-muted mt-2"><i class="bi bi-shield-check"></i> Sin cuentas, sin servidor, sin internet después de abrirlo. Tus datos nunca salen del dispositivo.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMPORT -->
+    <section id="view-import" data-view class="d-none">
+      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div>
+          <div class="eyebrow">Importador</div>
+          <h2 class="section-title m-0">Pega el JSON de tu IA</h2>
+          <div class="small text-muted">Valida línea por línea y campo faltante. Si es correcto, se guarda automáticamente.</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-ghost btn-sm" id="btnLoadSample"><i class="bi bi-file-earmark-code"></i> Cargar ejemplo</button>
+          <button class="btn btn-ghost btn-sm" id="btnClearJson"><i class="bi bi-trash"></i> Limpiar</button>
+        </div>
+      </div>
+      <div class="card-asp mt-3">
+        <div class="card-pad">
+          <label class="form-label fw-semibold">JSON del plan de estudio</label>
+          <textarea id="jsonArea" class="form-control json-area" placeholder='Pega aquí el JSON que te devolvió ChatGPT. Debe empezar con { "curso": ... }'></textarea>
+          <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" id="btnValidate"><i class="bi bi-check2-circle"></i> Validar e Importar</button>
+            <a href="#home" class="btn btn-ghost">Volver</a>
+          </div>
+          <div id="validationBox" class="mt-3"></div>
+          <div class="alert-asp mt-3 small">
+            <strong>Esquema requerido:</strong> curso, descripcion, duracion, horas_dia, objetivo, nivel, fecha_inicio (YYYY-MM-DD), semanas[]. Cada semana: numero, titulo, objetivo, dias[]. Cada día: numero, horas, temas[]. Cada tema: titulo, tipo, prioridad, estado, dominado, notas, practicas, ejercicios, criterios, recursos.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" data-view class="d-none">
+      <div id="dashboardWrap"></div>
+      <div id="weeksWrap" class="mt-3"></div>
+    </section>
+
+    <!-- CURSOS -->
+    <section id="view-cursos" data-view class="d-none">
+      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div>
+          <div class="eyebrow">Biblioteca</div>
+          <h2 class="section-title m-0">Mis Cursos</h2>
+          <div class="small text-muted">Múltiples cursos independientes. Duplica, archiva, elimina y exporta.</div>
+        </div>
+        <a href="#home" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevo curso</a>
+      </div>
+      <div id="coursesGrid" class="row g-3 mt-1"></div>
+    </section>
+
+    <footer class="text-center small text-muted mt-4 py-3 border-top">
+      AI Study Planner • Hecho para funcionar abriendo <span class="kbd">index.html</span> • Bootstrap 5.3 • Chart.js • LocalStorage • <span id="year"></span>
+    </footer>
+  </main>
+</div>
+
+<!-- Modal Editar Curso -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:16px">
+      <div class="modal-header" style="border-color:var(--border)">
+        <h5 class="modal-title section-title" id="editModalTitle"><i class="bi bi-pencil-square"></i> Editar curso</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Nombre del curso</label>
+          <input id="editCurso" class="form-control">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Descripción</label>
+          <textarea id="editDescripcion" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Duración</label>
+            <input id="editDuracion" class="form-control" placeholder="ej: 4 semanas">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Horas por día</label>
+            <input id="editHoras" type="number" min="0.5" step="0.5" class="form-control">
+          </div>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Nivel</label>
+            <select id="editNivel" class="form-select">
+              <option>Principiante</option><option>Intermedio</option><option>Avanzado</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Fecha de inicio</label>
+            <input id="editFecha" type="date" class="form-control">
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-semibold">Objetivo</label>
+          <textarea id="editObjetivo" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-color:var(--border)">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnSaveEdit"><i class="bi bi-check2"></i> Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast area -->
+<div id="toastArea" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1080"></div>
+
+<!-- Vendor local -->
+<script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="assets/vendor/chartjs/chart.umd.min.js"></script>
+<!-- App modules (orden importa, sin imports ES para file://) -->
+<script src="js/storage.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/progress.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body>
+</html>
