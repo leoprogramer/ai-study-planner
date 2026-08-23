@@ -61,7 +61,8 @@ CONTENIDO PEDAGÓGICO PARA "[TEMA]":
 - Nivel coherente con el tema: si es introductorio usa Principiante.
 
 REGLA CRÍTICA DE RECURSOS (autodidacta navegable):
-- CADA tema debe tener mínimo 2 recursos en "recursos", todos como URL completa y navegable:
+- CADA tema debe tener mínimo 2 recursos en "recursos", todos como URL PLANA y completa:
+  usa SOLO la URL, sin markdown, sin corchetes [ ], sin paréntesis ( ), sin texto alrededor.
   1. Un video: YouTube en formato BÚSQUEDA (siempre válido, nunca inventes IDs de video):
      https://www.youtube.com/results?search_query=<nombre+del+tema+con+signos+de+suma>
   2. Documentación o página OFICIAL del programa/tecnología/entidad tratado, ejemplos:
@@ -71,6 +72,7 @@ REGLA CRÍTICA DE RECURSOS (autodidacta navegable):
   3. Puedes añadir un tercero: curso gratuito, artículo o libro (con URL si existe).
 - Si el tema es sobre un software, herramienta u organización, SIEMPRE incluye su sitio oficial.
 - NUNCA devuelvas recursos vacíos [] ni texto sin URL.
+- PROHIBIDO el formato markdown en recursos. MAL: ["[url](url)"]. BIEN: ["https://..."]
 
 VALIDACIÓN FINAL ANTES DE RESPONDER:
 - ¿Es solo JSON? SÍ.

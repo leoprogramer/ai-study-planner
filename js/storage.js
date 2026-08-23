@@ -231,7 +231,12 @@
           t.practicas = !!t.practicas;
           t.ejercicios = !!t.ejercicios;
           t.criterios = String(t.criterios||'');
+          // recursos: normalizar (markdown→URL, extraer de texto) y deduplicar
+          const clean = global.ASPUtils && global.ASPUtils.cleanRecurso
+            ? r => global.ASPUtils.cleanRecurso(r)
+            : r => String(r);
           t.recursos = Array.isArray(t.recursos)? t.recursos: (t.recursos? [String(t.recursos)]: []);
+          t.recursos = [...new Set(t.recursos.map(clean).filter(Boolean))];
           // tracking adicional
           if(typeof t._done === 'undefined') t._done = false; // completado global
           if(typeof t._resumen === 'undefined') t._resumen = false;

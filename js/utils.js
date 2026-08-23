@@ -3,6 +3,34 @@
   'use strict';
   const Utils = {
     uid: ()=> Math.random().toString(36).slice(2,9),
+    /**
+     * Normaliza un recurso a URL limpia y navegable:
+     * 1. Si trae markdown [a](b) prioriza la URL de YouTube presente en la cadena,
+     *    luego la del paréntesis y luego la del corchete.
+     * 2. Si trae texto con una URL plano incrustada, la extrae.
+     * 3. Limpia puntuación final y corchetes residuales.
+     */
+    cleanRecurso(raw){
+      let s = String(raw ?? '').trim();
+      if(!s) return '';
+      // 1. URL de YouTube en cualquier parte de la cadena (prioridad máxima)
+      const yt = s.match(/https?:\/\/[^\s<>"')\]]*(?:youtube\.com|youtu\.be)[^\s<>"')\]]*/i);
+      if(yt) return yt[0];
+      // 2. Markdown [label](target): preferir target si es URL absoluta
+      const md = s.match(/\[([^\]]*)\]\(([^)]+)\)/);
+      if(md){
+        const target = md[2].trim();
+        const label = md[1].trim();
+        if(/^https?:\/\//i.test(target)) return target.replace(/[.,;:]+$/,'');
+        if(/^https?:\/\//i.test(label)) return label;
+        s = label || target;
+      }
+      // 3. Primer URL plano dentro del texto
+      const plain = s.match(/https?:\/\/[^\s<>"')\]]+/i);
+      if(plain) return plain[0].replace(/[.,;:]+$/,'');
+      // 4. Texto sin URL: devolver limpio
+      return s.replace(/^[\[\(]+/,'').replace(/[\]\)]+$/,'').trim();
+    },
     escapeHtml(s){
       return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     },
@@ -120,7 +148,8 @@ CONTENIDO PEDAGÓGICO PARA "${t}":
 - Nivel coherente con el tema: si es introductorio usa Principiante.
 
 REGLA CRÍTICA DE RECURSOS (autodidacta navegable):
-- CADA tema debe tener mínimo 2 recursos en "recursos", todos como URL completa y navegable:
+- CADA tema debe tener mínimo 2 recursos en "recursos", todos como URL PLANA y completa:
+  usa SOLO la URL, sin markdown, sin corchetes [ ], sin paréntesis ( ), sin texto alrededor.
   1. Un video: YouTube en formato BÚSQUEDA (siempre válido, nunca inventes IDs de video):
      https://www.youtube.com/results?search_query=<nombre+del+tema+con+signos+de+suma>
   2. Documentación o página OFICIAL del programa/tecnología/entidad tratado, ejemplos:
@@ -130,6 +159,7 @@ REGLA CRÍTICA DE RECURSOS (autodidacta navegable):
   3. Puedes añadir un tercero: curso gratuito, artículo o libro (con URL si existe).
 - Si el tema es sobre un software, herramienta u organización, SIEMPRE incluye su sitio oficial.
 - NUNCA devuelvas recursos vacíos [] ni texto sin URL.
+- PROHIBIDO el formato markdown en recursos. MAL: ["[url](url)"]. BIEN: ["https://..."]
 
 VALIDACIÓN FINAL ANTES DE RESPONDER:
 - ¿Es solo JSON? SÍ.

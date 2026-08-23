@@ -2,29 +2,37 @@
 (function(global){
   'use strict';
   const escapeHtml = (s)=> String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const U = global.ASPUtils;
 
   /**
    * Recursos de un tema con iconos según tipo:
    * - YouTube → icono rojo "Video"
    * - URL     → icono externo + dominio
    * - texto   → marcador
+   * Cada recurso pasa por cleanRecurso(): si la IA lo devolvió en markdown
+   * [url](url) o con texto extra, se extrae la URL real antes del href.
    */
   function renderRecursos(recursos){
     if(!recursos || !recursos.length) return '';
     const items = recursos.map(r=>{
-      const s = String(r).trim();
+      const s = String(U?.cleanRecurso? U.cleanRecurso(r): r).trim();
+      if(!s) return '';
       const low = s.toLowerCase();
-      if(low.includes('youtube.com') || low.includes('youtu.be')){
+      // href absoluto garantizado: si no es http(s), no genera enlace
+      const isUrl = /^https?:\/\//i.test(s);
+      if(isUrl && (low.includes('youtube.com') || low.includes('youtu.be'))){
         return `<a href="${escapeHtml(s)}" target="_blank" rel="noopener" class="res-yt" title="Ver video en YouTube"><i class="bi bi-youtube"></i> Video</a>`;
       }
-      if(/^https?:\/\//i.test(s)){
+      if(isUrl){
         let host;
         try{ host = new URL(s).hostname.replace(/^www\./,''); }catch(e){ host = s.slice(0,28); }
         return `<a href="${escapeHtml(s)}" target="_blank" rel="noopener" title="${escapeHtml(s)}"><i class="bi bi-box-arrow-up-right"></i> ${escapeHtml(host)}</a>`;
       }
       return `<span class="res-txt"><i class="bi bi-bookmark-star"></i> ${escapeHtml(s)}</span>`;
     });
-    return `<div class="topic-meta mt-1 res-row"><i class="bi bi-mortarboard"></i> ${items.join('<span class="res-sep">•</span>')}</div>`;
+    const visibles = items.filter(Boolean);
+    if(!visibles.length) return '';
+    return `<div class="topic-meta mt-1 res-row"><i class="bi bi-mortarboard"></i> ${visibles.join('<span class="res-sep">•</span>')}</div>`;
   }
 
   const Dashboard = {
